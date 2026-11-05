@@ -1,0 +1,6 @@
+{
+  "name": "QR Studio",
+  "description": "Apple-inspired Liquid Glass QR code studio with multi-format generator, live camera scanner, styling templates, and high-resolution export.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
