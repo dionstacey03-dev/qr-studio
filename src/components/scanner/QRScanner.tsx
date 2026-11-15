@@ -161,6 +161,13 @@ export const QRScanner: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type) || file.size > 10 * 1024 * 1024) {
+      setErrorMessage('Choose a PNG, JPEG or WebP image smaller than 10 MB.');
+      e.target.value = '';
+      return;
+    }
+
     setIsProcessingImage(true);
     setErrorMessage(null);
 
@@ -168,6 +175,11 @@ export const QRScanner: React.FC = () => {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
+        if (img.width * img.height > 16000000) {
+          setErrorMessage('This image is too large to process. Please choose an image with fewer than 16 megapixels.');
+          setIsProcessingImage(false);
+          return;
+        }
         const offscreen = document.createElement('canvas');
         offscreen.width = img.width;
         offscreen.height = img.height;
@@ -335,7 +347,7 @@ export const QRScanner: React.FC = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp"
               onChange={handleFileUpload}
               className="hidden"
             />
