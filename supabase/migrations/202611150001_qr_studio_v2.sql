@@ -111,5 +111,8 @@ $$;
 revoke all on function public.record_qr_scan(text, text, text) from public, anon, authenticated;
 grant execute on function public.record_qr_scan(text, text, text) to service_role;
 
-grant select, insert, update, delete on public.qr_links to authenticated;
+grant select, delete on public.qr_links to authenticated;
+revoke insert, update on public.qr_links from authenticated;
+grant insert (user_id, short_code, title, destination_url) on public.qr_links to authenticated;
+grant update (title, destination_url, is_active) on public.qr_links to authenticated;
 grant select on public.qr_scan_events to authenticated;
