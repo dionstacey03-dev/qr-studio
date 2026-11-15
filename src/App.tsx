@@ -33,22 +33,36 @@ const ProxyRedirectHandler: React.FC = () => {
     const proxyId = urlParams.get('qr_proxy');
 
     if (proxyId) {
-      // Find matching tracked link or fallback
-      const found = trackedLinks.find((l) => l.id === proxyId);
-      const targetUrl = found ? found.targetUrl : 'https://apple.com';
-      const title = found ? found.title : 'QR Destination';
+      // A dynamic link must exist in the current redirect store.
+      // Never send unknown IDs to an unrelated fallback destination.
+      const found = trackedLinks.find((link) => link.id === proxyId);
+      if (!found) {
+        setRedirectInfo({ targetUrl: '', title: 'Link unavailable', linkId: proxyId });
+        return;
+      }
 
-      // Record click telemetry
+      let destination: URL;
+      try {
+        destination = new URL(found.targetUrl);
+      } catch {
+        setRedirectInfo({ targetUrl: '', title: 'Invalid destination', linkId: proxyId });
+        return;
+      }
+
+      // Only web destinations are eligible for automatic redirects.
+      if (destination.protocol !== 'https:' && destination.protocol !== 'http:') {
+        setRedirectInfo({ targetUrl: '', title: 'Unsupported destination', linkId: proxyId });
+        return;
+      }
+
       recordClick(proxyId);
+      setRedirectInfo({ targetUrl: destination.href, title: found.title, linkId: proxyId });
 
-      setRedirectInfo({ targetUrl, title, linkId: proxyId });
-
-      // Clean browser history URL and redirect after 1.5s splash
-      const timer = setTimeout(() => {
-        window.location.replace(targetUrl);
+      const timer = window.setTimeout(() => {
+        window.location.replace(destination.href);
       }, 1400);
 
-      return () => clearTimeout(timer);
+      return () => window.clearTimeout(timer);
     }
   }, [trackedLinks, recordClick]);
 
@@ -65,20 +79,29 @@ const ProxyRedirectHandler: React.FC = () => {
             QR Studio Proxy Gateway
           </span>
           <h2 className="text-xl font-bold text-white mt-3">
-            Redirecting to {redirectInfo.title}
+            {redirectInfo.targetUrl ? `Redirecting to ${redirectInfo.title}` : redirectInfo.title}
           </h2>
-          <p className="text-xs text-slate-400 mt-1 font-mono truncate max-w-xs mx-auto">
-            {redirectInfo.targetUrl}
-          </p>
+          {redirectInfo.targetUrl ? (
+            <p className="text-xs text-slate-400 mt-1 font-mono truncate max-w-xs mx-auto">
+              {redirectInfo.targetUrl}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-400 mt-1">
+              This QR link could not be resolved. Ask the creator for a current link.
+            </p>
+          )}
         </div>
         <div className="pt-2">
-          <a
-            href={redirectInfo.targetUrl}
-            className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold underline"
-          >
-            <span>Tap here if not redirected automatically</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          {redirectInfo.targetUrl && (
+            <a
+              href={redirectInfo.targetUrl}
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold underline"
+            >
+              <span>Tap here if not redirected automatically</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
         </div>
       </div>
     </div>
