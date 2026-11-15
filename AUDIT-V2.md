@@ -48,7 +48,10 @@ Audit baseline: `main` at `b33aca68a98da86ce837df80e5b2b0e7042630a5`.
 - [x] Restrict scanner uploads to PNG/JPEG/WebP with file-size and pixel-count limits.
 - [x] Bound and schema-check imported QR history; discard unsafe imported logo/preview data URLs.
 - [ ] Harden remaining QR URL handling and export lifecycle.
-- [ ] Implement persistent dynamic links and analytics backend (awaiting provider choice).
+- [x] Add Supabase PostgreSQL schema, RLS policies and atomic scan-recording RPC.
+- [x] Add public redirect Edge Function with HTTP(S) destination validation and no raw IP storage.
+- [x] Connect passwordless email authentication, hosted campaign creation and cloud analytics UI.
+- [ ] Apply migration and deploy Edge Function to the user's Supabase project; credentials are not yet supplied.
 - [x] Lazy-load workspace modules; reduce initial JS entry chunk from 1,051.93 kB to 285.07 kB (Vercel build output).
 - [ ] Refine dashboard, generator, scanner, bulk tools and mobile interactions.
 - [ ] Refresh README, screenshots, accessibility notes and deployment instructions.
