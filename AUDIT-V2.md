@@ -46,8 +46,11 @@ Audit baseline: `main` at `b33aca68a98da86ce837df80e5b2b0e7042630a5`.
 - [ ] Add automated unit/component tests and verify a passing production build.
 - [x] Restrict uploaded logos to bounded PNG/JPEG/WebP files and reject SVG uploads.
 - [x] Restrict scanner uploads to PNG/JPEG/WebP with file-size and pixel-count limits.
-- [ ] Harden history import, QR URL handling and export lifecycle.
-- [ ] Implement persistent dynamic links and analytics backend.
+- [x] Bound and schema-check imported QR history; discard unsafe imported logo/preview data URLs.
+- [ ] Harden remaining QR URL handling and export lifecycle.
+- [ ] Implement persistent dynamic links and analytics backend (awaiting provider choice).
+- [x] Lazy-load workspace modules; reduce initial JS entry chunk from 1,051.93 kB to 285.07 kB (Vercel build output).
 - [ ] Refine dashboard, generator, scanner, bulk tools and mobile interactions.
 - [ ] Refresh README, screenshots, accessibility notes and deployment instructions.
-- [ ] Deploy preview, perform device testing, then promote to production after approval.
+- [x] Deploy Vercel preview and verify TypeScript check + production build.
+- [ ] Perform browser/device QA, then promote to production after approval.
