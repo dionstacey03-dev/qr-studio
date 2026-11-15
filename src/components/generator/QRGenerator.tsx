@@ -171,13 +171,13 @@ export const QRGenerator: React.FC = () => {
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>Enable QR Clicks Analytics</span>
+                          <span>Hosted scan analytics</span>
                           <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
                             Telemetry
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Proxies this URL to count scans and record device models in your dashboard.
+                          Create a hosted campaign from Analytics to generate a dynamic QR link with cross-device scan tracking.
                         </p>
                       </div>
                     </div>
@@ -185,7 +185,8 @@ export const QRGenerator: React.FC = () => {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={!!config.trackingEnabled}
+                        checked={false}
+                        disabled
                         onChange={(e) => {
                           const enabled = e.target.checked;
                           if (enabled) {
@@ -211,7 +212,7 @@ export const QRGenerator: React.FC = () => {
                         Proxy ID: {config.trackingId || 'Auto-generated'}
                       </span>
                       <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                        Ready to scan & track
+                        Local tracking disabled
                       </span>
                     </div>
                   )}
