@@ -32,6 +32,7 @@ export const QRScanner: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const animFrameId = useRef<number | null>(null);
+  const lastScanAtRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
@@ -109,9 +110,22 @@ export const QRScanner: React.FC = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+    // Decode at a bounded cadence and resolution to reduce mobile CPU usage.
+    const now = performance.now();
+    if (now - lastScanAtRef.current < 120) {
+      animFrameId.current = requestAnimationFrame(scanVideoFrame);
+      return;
+    }
+    lastScanAtRef.current = now;
+
     if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      const sourceWidth = video.videoWidth;
+      const sourceHeight = video.videoHeight;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        const scale = Math.min(1, 640 / sourceWidth);
+        canvas.width = Math.round(sourceWidth * scale);
+        canvas.height = Math.round(sourceHeight * scale);
+      }
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
