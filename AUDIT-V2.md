@@ -42,7 +42,8 @@ Audit baseline: `main` at `b33aca68a98da86ce837df80e5b2b0e7042630a5`.
 - [x] Remove unrelated fallback redirect and validate redirect protocol.
 - [x] Correct package identity/version.
 - [ ] Complete component-by-component security and performance review.
-- [ ] Add automated unit/component tests and production build verification.
+- [x] Add GitHub Actions CI for frozen Bun install, TypeScript check and production build (first run pending).
+- [ ] Add automated unit/component tests and verify a passing production build.
 - [x] Restrict uploaded logos to bounded PNG/JPEG/WebP files and reject SVG uploads.
 - [x] Restrict scanner uploads to PNG/JPEG/WebP with file-size and pixel-count limits.
 - [ ] Harden history import, QR URL handling and export lifecycle.
