@@ -1,6 +1,6 @@
 # QR Studio
 
-A modern, customizable QR code generator with an Apple-inspired Liquid Glass interface.
+A modern, customizable QR code generator with an Apple-inspired Liquid Glass interface, built with React 19, TypeScript and Vite.
 
 QR Studio makes it easy to create, customize, scan, and download QR codes through a clean, responsive interface designed for mobile and desktop.
 
@@ -42,8 +42,8 @@ QR Studio makes it easy to create, customize, scan, and download QR codes throug
 |---|---|
 | React | User interface |
 | Vite | Development server and build tool |
-| JavaScript | Application logic |
-| CSS | Styling and Liquid Glass effects |
+| TypeScript | Application logic |
+| Tailwind CSS 4 | Styling and Liquid Glass effects |
 | QR Code Libraries | QR generation and scanning |
 | Local Storage | History and preference persistence |
 
@@ -119,11 +119,13 @@ QR Studio is designed to work across mobile phones, tablets, and desktop browser
 
 Camera-based QR scanning requires browser camera permission and a secure HTTPS connection.
 
-## 🔒 Privacy
+## 🔒 Privacy & QR safety
 
-QR Studio is designed to keep generated QR codes and saved history in the user's browser.
+Static QR generation and saved history are designed to work locally in your browser. QR codes are not automatically uploaded to a server when generated.
 
-The application does not require an account to generate QR codes. Camera access is requested only when scanning is started.
+Camera access is requested only when scanning is started. Scanned web links should be reviewed before opening. Never enter credentials or payment details on a destination you do not trust.
+
+Dynamic redirect links and cross-device analytics require a persistent backend; browser-local records alone do not provide a shared redirect service or reliable scan analytics.
 
 ## 👨‍💻 Author
 
