@@ -100,6 +100,7 @@ export interface ScannedQRResult {
 
 export interface TrackedLink {
   id: string;
+  shortCode?: string;
   targetUrl: string;
   title: string;
   createdAt: number;
