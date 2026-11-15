@@ -342,39 +342,12 @@ export const QRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   };
 
-  // Click Tracking Analytics State
+  // Analytics starts empty: never present fabricated demo activity as real scans.
   const [trackedLinks, setTrackedLinks] = useState<TrackedLink[]>(() => {
     try {
       const saved = localStorage.getItem('qr_studio_tracked_links');
-      if (saved) return JSON.parse(saved);
-      // Seed default sample links for demonstration
-      const now = Date.now();
-      return [
-        {
-          id: 'apple_keynote',
-          targetUrl: 'https://apple.com/apple-events',
-          title: 'WWDC Keynote Stream',
-          createdAt: now - 86400000 * 5,
-          totalClicks: 142,
-          lastClickedAt: now - 3600000 * 2,
-        },
-        {
-          id: 'studio_docs',
-          targetUrl: 'https://developer.apple.com/design',
-          title: 'Human Interface Guidelines',
-          createdAt: now - 86400000 * 12,
-          totalClicks: 89,
-          lastClickedAt: now - 3600000 * 6,
-        },
-        {
-          id: 'cafe_menu',
-          targetUrl: 'https://example.com/menu',
-          title: 'Storefront QR Menu',
-          createdAt: now - 86400000 * 20,
-          totalClicks: 326,
-          lastClickedAt: now - 3600000 * 1,
-        },
-      ];
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed as TrackedLink[] : [];
     } catch {
       return [];
     }
@@ -383,32 +356,8 @@ export const QRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [clickEvents, setClickEvents] = useState<ClickEvent[]>(() => {
     try {
       const saved = localStorage.getItem('qr_studio_click_events');
-      if (saved) return JSON.parse(saved);
-      // Seed realistic click events across the past 7 days for the charts
-      const now = Date.now();
-      const sampleEvents: ClickEvent[] = [];
-      const devices = ['iPhone (iOS)', 'iPhone (iOS)', 'Android', 'Mac (Safari)', 'Windows (Chrome)'];
-      const browsers = ['Mobile Safari', 'Mobile Safari', 'Chrome Mobile', 'Desktop Safari', 'Desktop Chrome'];
-      const linkIds = ['apple_keynote', 'cafe_menu', 'studio_docs'];
-
-      // Generate ~50 seed click events spread across the last 7 days
-      for (let i = 0; i < 60; i++) {
-        const daysAgo = Math.floor(Math.random() * 7);
-        const hoursAgo = Math.floor(Math.random() * 24);
-        const timestamp = now - (daysAgo * 86400000 + hoursAgo * 3600000);
-        const linkId = linkIds[Math.floor(Math.random() * linkIds.length)];
-        const devIdx = Math.floor(Math.random() * devices.length);
-
-        sampleEvents.push({
-          id: 'clk_' + timestamp + '_' + Math.random().toString(36).substring(2, 6),
-          linkId,
-          timestamp,
-          device: devices[devIdx],
-          browser: browsers[devIdx],
-        });
-      }
-
-      return sampleEvents.sort((a, b) => b.timestamp - a.timestamp);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed as ClickEvent[] : [];
     } catch {
       return [];
     }
