@@ -37,11 +37,15 @@ Audit baseline: `main` at `b33aca68a98da86ce837df80e5b2b0e7042630a5`.
 
 - [x] Create isolated `upgrade/qr-studio-v2` branch.
 - [x] Remove fabricated analytics seed data.
+- [x] Remove synthetic device-chart values and manual test-scan inflation.
+- [x] Label browser-local campaign analytics accurately as a prototype.
 - [x] Remove unrelated fallback redirect and validate redirect protocol.
 - [x] Correct package identity/version.
 - [ ] Complete component-by-component security and performance review.
 - [ ] Add automated unit/component tests and production build verification.
-- [ ] Harden logo upload, history import, QR URL handling and export lifecycle.
+- [x] Restrict uploaded logos to bounded PNG/JPEG/WebP files and reject SVG uploads.
+- [x] Restrict scanner uploads to PNG/JPEG/WebP with file-size and pixel-count limits.
+- [ ] Harden history import, QR URL handling and export lifecycle.
 - [ ] Implement persistent dynamic links and analytics backend.
 - [ ] Refine dashboard, generator, scanner, bulk tools and mobile interactions.
 - [ ] Refresh README, screenshots, accessibility notes and deployment instructions.
