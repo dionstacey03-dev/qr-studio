@@ -65,13 +65,21 @@ export const QRGenerator: React.FC = () => {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+      if (!allowedTypes.includes(file.type) || file.size > 2 * 1024 * 1024) {
+        window.alert('Choose a PNG, JPEG or WebP logo smaller than 2 MB. SVG uploads are disabled for safety.');
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
-        updateConfig({
-          logoUrl: reader.result as string,
-          errorCorrection: 'H', // auto boost to H for scan safety
-        });
+        if (typeof reader.result !== 'string' || !reader.result.startsWith('data:image/')) {
+          window.alert('The selected logo could not be read as an image.');
+          return;
+        }
+        updateConfig({ logoUrl: reader.result, errorCorrection: 'H' });
       };
+      reader.onerror = () => window.alert('Unable to read this logo file. Please try another image.');
       reader.readAsDataURL(file);
     }
   };
@@ -631,10 +639,10 @@ export const QRGenerator: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <label className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-blue-500/20">
                   <Upload className="w-4 h-4" />
-                  <span>Upload Logo (PNG, SVG, JPG)</span>
+                  <span>Upload Logo (PNG, JPG, WebP)</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp"
                     onChange={handleLogoUpload}
                     className="hidden"
                   />
