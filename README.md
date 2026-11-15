@@ -29,6 +29,12 @@ QR Studio makes it easy to create, customize, scan, and download QR codes throug
 - Upload images to scan saved QR codes.
 - Copy scanned content and open supported URLs.
 
+### Hosted Dynamic QR & Analytics
+- Create hosted QR campaigns backed by Supabase PostgreSQL.
+- Generate persistent redirect links that work across devices.
+- Record server-side scan events and view campaign totals, scan timelines and coarse device/browser categories.
+- Manage campaigns securely with Supabase Auth and row-level security.
+
 ### Download & History
 - Download QR codes as PNG or SVG.
 - Export high-resolution QR codes.
@@ -45,9 +51,26 @@ QR Studio makes it easy to create, customize, scan, and download QR codes throug
 | TypeScript | Application logic |
 | Tailwind CSS 4 | Styling and Liquid Glass effects |
 | QR Code Libraries | QR generation and scanning |
-| Local Storage | History and preference persistence |
+| Local Storage | Local history and preference persistence |
+| Supabase Auth | Passwordless email sign-in |
+| Supabase PostgreSQL | Hosted QR campaigns and scan analytics |
+| Supabase Edge Functions | Public dynamic QR redirect gateway |
 
 ## 🚀 Getting Started
+
+### Supabase setup (required for hosted dynamic QR)
+
+1. Create a Supabase project.
+2. Open the SQL Editor and run `supabase/migrations/202611150001_qr_studio_v2.sql`.
+3. Deploy `supabase/functions/redirect` and configure it with `verify_jwt = false` (the public QR redirect endpoint must be reachable without a user session).
+4. Set Edge Function secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` using Supabase. Never place the service-role key in Vite environment variables or commit it to Git.
+5. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or the publishable key).
+6. In Supabase Authentication URL Configuration, add local and deployed app URLs to the allowed redirect URLs.
+7. Add the same two `VITE_` variables to Vercel Preview and Production environments, then redeploy.
+
+Static QR generation remains available without Supabase credentials. Hosted campaigns require Supabase configuration and email sign-in.
+
+
 
 ### Prerequisites
 
@@ -125,7 +148,7 @@ Static QR generation and saved history are designed to work locally in your brow
 
 Camera access is requested only when scanning is started. Scanned web links should be reviewed before opening. Never enter credentials or payment details on a destination you do not trust.
 
-Dynamic redirect links and cross-device analytics require a persistent backend; browser-local records alone do not provide a shared redirect service or reliable scan analytics.
+Dynamic QR redirects and scan analytics use Supabase. The redirect function records coarse device/browser categories only; it does not store raw IP addresses. Static QR generation and local history remain browser-local.
 
 ## 👨‍💻 Author
 
