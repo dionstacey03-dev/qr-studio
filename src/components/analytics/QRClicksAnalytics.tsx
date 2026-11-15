@@ -188,7 +188,7 @@ export const QRClicksAnalytics: React.FC = () => {
     if (!link) return;
     updateConfig({
       type: 'url',
-      url: link.targetUrl,
+      url: getProxyUrl(link.id),
       trackingEnabled: true,
       trackingId: link.id,
     });
