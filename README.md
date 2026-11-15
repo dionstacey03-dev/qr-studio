@@ -62,8 +62,8 @@ QR Studio makes it easy to create, customize, scan, and download QR codes throug
 
 1. Create a Supabase project.
 2. Open the SQL Editor and run `supabase/migrations/202611150001_qr_studio_v2.sql`.
-3. Deploy `supabase/functions/redirect` and configure it with `verify_jwt = false` (the public QR redirect endpoint must be reachable without a user session).
-4. Set Edge Function secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` using Supabase. Never place the service-role key in Vite environment variables or commit it to Git.
+3. Install the Supabase CLI, link the project with `supabase link --project-ref YOUR_PROJECT_REF`, then deploy the function with `supabase functions deploy redirect`. The checked-in `supabase/config.toml` sets `verify_jwt = false` so QR scans can resolve without a user session.
+4. Set the Edge Function secret with `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY`. Supabase provides `SUPABASE_URL` to Edge Functions automatically. Never place the service-role key in Vite environment variables or commit it to Git.
 5. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or the publishable key).
 6. In Supabase Authentication URL Configuration, add local and deployed app URLs to the allowed redirect URLs.
 7. Add the same two `VITE_` variables to Vercel Preview and Production environments, then redeploy.
