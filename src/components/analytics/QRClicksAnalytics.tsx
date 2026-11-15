@@ -13,7 +13,6 @@ import {
   MousePointerClick,
   Compass,
   Laptop,
-  Play,
   RotateCcw,
   ArrowUpRight,
   ShieldCheck,
@@ -39,7 +38,6 @@ export const QRClicksAnalytics: React.FC = () => {
     trackedLinks, 
     clickEvents, 
     createTrackedLink, 
-    recordClick, 
     deleteTrackedLink, 
     clearTrackingData,
     setActiveTab,
@@ -51,7 +49,6 @@ export const QRClicksAnalytics: React.FC = () => {
   const [newUrlInput, setNewUrlInput] = useState('');
   const [newTitleInput, setNewTitleInput] = useState('');
   const [isCreatingLink, setIsCreatingLink] = useState(false);
-  const [simulatingId, setSimulatingId] = useState<string | null>(null);
 
   // Calculate totals
   const totalScans = useMemo(() => {
@@ -146,12 +143,6 @@ export const QRClicksAnalytics: React.FC = () => {
     }
   };
 
-  const handleSimulateScan = (linkId: string) => {
-    setSimulatingId(linkId);
-    recordClick(linkId);
-    setTimeout(() => setSimulatingId(null), 600);
-  };
-
   const handleCreateAndOpenGenerator = (linkId: string) => {
     const link = trackedLinks.find(l => l.id === linkId);
     if (!link) return;
@@ -191,11 +182,11 @@ export const QRClicksAnalytics: React.FC = () => {
               QR Clicks & Scan Analytics
             </h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
-              Live Proxy
+              Local-only prototype
             </span>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Real-time scan counter and telemetry for trackable QR codes, visualized with Apple Liquid Glass.
+            Campaign drafts are stored in this browser only. Cross-device redirects and verified scan analytics require the V2 hosted service.
           </p>
         </div>
 
@@ -483,7 +474,7 @@ export const QRClicksAnalytics: React.FC = () => {
               <span>Tracked QR Campaigns</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Each campaign has a proxy URL embedded inside the QR code. Clicking 'Simulate Scan' will instantly register an event and test the pipeline.
+              Local campaign records are not shared across devices. Real scan counts will appear only after the persistent redirect service is connected.
             </p>
           </div>
 
@@ -516,7 +507,6 @@ export const QRClicksAnalytics: React.FC = () => {
           <div className="divide-y divide-slate-200/60 dark:divide-white/10 overflow-x-auto">
             {trackedLinks.map((link) => {
               const proxyUrl = getProxyUrl(link.id);
-              const isSimulating = simulatingId === link.id;
 
               return (
                 <div
@@ -566,21 +556,6 @@ export const QRClicksAnalytics: React.FC = () => {
                         Scans
                       </div>
                     </div>
-
-                    {/* Simulate Scan Button */}
-                    <button
-                      onClick={() => handleSimulateScan(link.id)}
-                      disabled={isSimulating}
-                      className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        isSimulating
-                          ? 'bg-emerald-500 text-white scale-105'
-                          : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                      }`}
-                      title="Test scan event (+1 scan count live)"
-                    >
-                      <Play className="w-3.5 h-3.5" />
-                      <span>{isSimulating ? '+1 Added!' : 'Test Scan'}</span>
-                    </button>
 
                     {/* Copy Proxy Link */}
                     <button
