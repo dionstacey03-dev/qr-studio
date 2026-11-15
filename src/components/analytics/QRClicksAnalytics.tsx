@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -19,6 +19,8 @@ import {
   Zap
 } from 'lucide-react';
 import { useQR } from '../../context/QRContext';
+import { supabase, isSupabaseConfigured, getRedirectUrl } from '../../lib/supabase';
+import type { TrackedLink, ClickEvent } from '../../types';
 import {
   AreaChart,
   Area,
@@ -34,15 +36,55 @@ import {
 } from 'recharts';
 
 export const QRClicksAnalytics: React.FC = () => {
-  const { 
-    trackedLinks, 
-    clickEvents, 
-    createTrackedLink, 
-    deleteTrackedLink, 
-    clearTrackingData,
-    setActiveTab,
-    updateConfig 
-  } = useQR();
+  const { setActiveTab, updateConfig } = useQR();
+  const [trackedLinks, setTrackedLinks] = useState<TrackedLink[]>([]);
+  const [clickEvents, setClickEvents] = useState<ClickEvent[]>([]);
+  const [session, setSession] = useState<any>(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [cloudError, setCloudError] = useState('');
+  const [cloudLoading, setCloudLoading] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    supabase.auth.getSession().then(({ data }) => { if (alive) setSession(data.session); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setCloudError('');
+    });
+    return () => { alive = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !session?.user?.id) { setTrackedLinks([]); setClickEvents([]); return; }
+    let alive = true;
+    setCloudLoading(true);
+    setCloudError('');
+    const load = async () => {
+      const { data: links, error: linksError } = await supabase!.from('qr_links')
+        .select('id, short_code, destination_url, title, created_at, scan_count, last_scanned_at')
+        .order('created_at', { ascending: false });
+      if (linksError) throw linksError;
+      const mappedLinks: TrackedLink[] = (links || []).map((row: any) => ({
+        id: row.id, shortCode: row.short_code, targetUrl: row.destination_url, title: row.title,
+        createdAt: new Date(row.created_at).getTime(), totalClicks: Number(row.scan_count || 0),
+        lastClickedAt: row.last_scanned_at ? new Date(row.last_scanned_at).getTime() : undefined,
+      }));
+      const { data: events, error: eventsError } = await supabase!.from('qr_scan_events')
+        .select('id, qr_link_id, scanned_at, device_category, browser_category')
+        .order('scanned_at', { ascending: false }).limit(1000);
+      if (eventsError) throw eventsError;
+      const mappedEvents: ClickEvent[] = (events || []).map((row: any) => ({
+        id: String(row.id), linkId: row.qr_link_id, timestamp: new Date(row.scanned_at).getTime(),
+        device: row.device_category || 'other', browser: row.browser_category || 'other',
+      }));
+      if (alive) { setTrackedLinks(mappedLinks); setClickEvents(mappedEvents); }
+    };
+    load().catch((error: any) => { if (alive) setCloudError(error?.message || 'Unable to load Supabase analytics.'); })
+      .finally(() => { if (alive) setCloudLoading(false); });
+    return () => { alive = false; };
+  }, [session?.user?.id]);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'7d' | '30d' | 'all'>('7d');
@@ -126,10 +168,8 @@ export const QRClicksAnalytics: React.FC = () => {
   const DEVICE_COLORS = ['#3b82f6', '#6366f1', '#06b6d4', '#8b5cf6', '#ec4899'];
 
   const getProxyUrl = (linkId: string) => {
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}${window.location.pathname}?qr_proxy=${linkId}`;
-    }
-    return `https://qrstudio.app?qr_proxy=${linkId}`;
+    const link = trackedLinks.find((item) => item.id === linkId);
+    return link?.shortCode ? getRedirectUrl(link.shortCode) : '';
   };
 
   const handleCopyLink = async (linkId: string) => {
@@ -155,21 +195,48 @@ export const QRClicksAnalytics: React.FC = () => {
     setActiveTab('generator');
   };
 
-  const handleQuickAdd = (e: React.FormEvent) => {
+  const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUrlInput.trim()) return;
-    const newLink = createTrackedLink(newUrlInput.trim(), newTitleInput.trim());
-    setNewUrlInput('');
-    setNewTitleInput('');
-    setIsCreatingLink(false);
+    if (!supabase || !authEmail.trim()) return;
+    setAuthMessage(''); setCloudError('');
+    const { error } = await supabase.auth.signInWithOtp({ email: authEmail.trim(), options: { emailRedirectTo: window.location.origin } });
+    if (error) setCloudError(error.message); else setAuthMessage('Check your email for the secure sign-in link.');
+  };
 
-    // Optionally load straight into generator
-    updateConfig({
-      type: 'url',
-      url: newLink.targetUrl,
-      trackingEnabled: true,
-      trackingId: newLink.id,
-    });
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !session?.user?.id) { setCloudError('Sign in before creating a hosted QR campaign.'); return; }
+    let destination: URL;
+    try { destination = new URL(newUrlInput.trim()); if (!['https:', 'http:'].includes(destination.protocol)) throw new Error(); }
+    catch { setCloudError('Enter a valid HTTP or HTTPS destination URL.'); return; }
+    setCloudError(''); setCloudLoading(true);
+    const shortCode = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    const title = newTitleInput.trim().slice(0, 120) || destination.hostname.replace(/^www\\./, '');
+    const { data, error } = await supabase.from('qr_links').insert({ user_id: session.user.id, short_code: shortCode, destination_url: destination.toString(), title })
+      .select('id, short_code, destination_url, title, created_at, scan_count, last_scanned_at').single();
+    setCloudLoading(false);
+    if (error || !data) { setCloudError(error?.message || 'Could not create hosted QR campaign.'); return; }
+    const newLink: TrackedLink = { id: data.id, shortCode: data.short_code, targetUrl: data.destination_url, title: data.title,
+      createdAt: new Date(data.created_at).getTime(), totalClicks: Number(data.scan_count || 0) };
+    setTrackedLinks((current) => [newLink, ...current]);
+    setNewUrlInput(''); setNewTitleInput(''); setIsCreatingLink(false);
+    updateConfig({ type: 'url', url: getRedirectUrl(shortCode), trackingEnabled: true, trackingId: data.id });
+    setActiveTab('generator');
+  };
+
+  const handleDeleteLink = async (id: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('qr_links').delete().eq('id', id);
+    if (error) { setCloudError(error.message); return; }
+    setTrackedLinks((current) => current.filter((link) => link.id !== id));
+    setClickEvents((current) => current.filter((event) => event.linkId !== id));
+  };
+
+  const handleClearTrackingData = async () => {
+    if (!supabase || !session?.user?.id) return;
+    const { error } = await supabase.from('qr_links').delete().eq('user_id', session.user.id);
+    if (error) { setCloudError(error.message); return; }
+    setTrackedLinks([]); setClickEvents([]);
   };
 
   return (
@@ -182,16 +249,17 @@ export const QRClicksAnalytics: React.FC = () => {
               QR Clicks & Scan Analytics
             </h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
-              Local-only prototype
+              {isSupabaseConfigured ? (session ? 'Supabase connected' : 'Sign-in required') : 'Supabase setup required'}
             </span>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Campaign drafts are stored in this browser only. Cross-device redirects and verified scan analytics require the V2 hosted service.
+            {session ? 'Hosted campaigns and scan events are stored securely in Supabase.' : 'Sign in to create hosted dynamic QR codes and view cross-device scan analytics.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
+            disabled={!session || !isSupabaseConfigured}
             onClick={() => setIsCreatingLink(prev => !prev)}
             className="min-h-[44px] px-4 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
           >
@@ -200,6 +268,29 @@ export const QRClicksAnalytics: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {!isSupabaseConfigured ? (
+        <div className="glass-surface p-5 rounded-3xl border border-amber-500/30 text-sm">
+          <strong className="text-slate-900 dark:text-white">Supabase setup required</strong>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to Vercel environment variables, then redeploy.</p>
+        </div>
+      ) : !session ? (
+        <form onSubmit={handleMagicLink} className="glass-surface p-5 rounded-3xl border border-blue-500/20 space-y-3">
+          <div><h3 className="font-bold text-sm text-slate-900 dark:text-white">Sign in to QR Studio Cloud</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">We'll email you a secure one-time sign-in link.</p></div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="you@example.com" className="flex-1 min-h-[44px] px-3.5 rounded-xl text-sm bg-white/70 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white" />
+            <button type="submit" className="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs">Email sign-in link</button>
+          </div>
+          {authMessage && <p className="text-xs text-emerald-600">{authMessage}</p>}
+        </form>
+      ) : (
+        <div className="glass-surface px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-slate-600 dark:text-slate-300">Signed in as <strong>{session.user.email}</strong></span>
+          <button onClick={() => void supabase?.auth.signOut()} className="text-blue-600 dark:text-blue-400 font-semibold">Sign out</button>
+        </div>
+      )}
+      {(cloudError || cloudLoading) && <div className={cloudError ? "text-xs rounded-xl px-4 py-3 bg-rose-500/10 text-rose-600" : "text-xs rounded-xl px-4 py-3 bg-blue-500/10 text-blue-600"}>{cloudError || 'Syncing your Supabase campaigns…'}</div>}
 
       {/* Creation Drawer / Form */}
       {isCreatingLink && (
@@ -252,9 +343,10 @@ export const QRClicksAnalytics: React.FC = () => {
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="submit"
+              disabled={cloudLoading || !session}
               className="min-h-[40px] px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md transition-all cursor-pointer"
             >
-              Create Tracked Link
+              Create Hosted QR
             </button>
           </div>
         </form>
@@ -307,7 +399,7 @@ export const QRClicksAnalytics: React.FC = () => {
             {todayScans}
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
-            Past 24 hours activity
+            Recorded today
           </p>
         </div>
 
@@ -410,7 +502,7 @@ export const QRClicksAnalytics: React.FC = () => {
               <span>Device Scanner Share</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Scanners identified by user agent during redirection.
+              Coarse device categories; no IP addresses are stored.
             </p>
 
             <div className="h-44 w-full">
@@ -474,7 +566,7 @@ export const QRClicksAnalytics: React.FC = () => {
               <span>Tracked QR Campaigns</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Local campaign records are not shared across devices. Real scan counts will appear only after the persistent redirect service is connected.
+              Campaigns are hosted in Supabase. Scan events are recorded by the redirect Edge Function.
             </p>
           </div>
 
@@ -482,7 +574,7 @@ export const QRClicksAnalytics: React.FC = () => {
             <button
               onClick={() => {
                 if (window.confirm('Reset all tracked campaigns and click history?')) {
-                  clearTrackingData();
+                  void handleClearTrackingData();
                 }
               }}
               className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 font-medium self-start cursor-pointer"
@@ -588,7 +680,7 @@ export const QRClicksAnalytics: React.FC = () => {
 
                     {/* Delete Link */}
                     <button
-                      onClick={() => deleteTrackedLink(link.id)}
+                      onClick={() => void handleDeleteLink(link.id)}
                       className="min-h-[40px] w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       title="Delete Campaign"
                     >
