@@ -292,6 +292,9 @@ export const QRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     mode: 'merge' | 'replace' = 'merge'
   ): { success: boolean; count: number; error?: string } => {
     try {
+      if (jsonString.length > 5 * 1024 * 1024) {
+        return { success: false, count: 0, error: 'Import file exceeds the 5 MB limit.' };
+      }
       const parsed = JSON.parse(jsonString);
       let itemsToImport: any[] = [];
 
@@ -303,10 +306,6 @@ export const QRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         itemsToImport = JSON.parse(parsed.history);
       } else {
         return { success: false, count: 0, error: 'Invalid JSON format. Expected history array or export object.' };
-      }
-
-      if (jsonString.length > 5 * 1024 * 1024) {
-        return { success: false, count: 0, error: 'Import file exceeds the 5 MB limit.' };
       }
 
       const isRecord = (value: unknown): value is Record<string, any> =>
