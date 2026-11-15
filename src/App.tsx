@@ -3,19 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { QRProvider, useQR } from './context/QRContext';
 import { DesktopSidebar, MobileTopBar, MobileFloatingNav } from './components/layout/Navbar';
-import { DashboardHome } from './components/dashboard/DashboardHome';
-import { QRGenerator } from './components/generator/QRGenerator';
-import { BulkQRGenerator } from './components/bulk/BulkQRGenerator';
-import { QRScanner } from './components/scanner/QRScanner';
-import { TemplateLibrary } from './components/templates/TemplateLibrary';
-import { QRHistory } from './components/history/QRHistory';
-import { SettingsView } from './components/settings/SettingsView';
-import { QRClicksAnalytics } from './components/analytics/QRClicksAnalytics';
-import { ShortcutsModal } from './components/common/ShortcutsModal';
+const DashboardHome = lazy(() => import('./components/dashboard/DashboardHome').then((m) => ({ default: m.DashboardHome })));
+const QRGenerator = lazy(() => import('./components/generator/QRGenerator').then((m) => ({ default: m.QRGenerator })));
+const BulkQRGenerator = lazy(() => import('./components/bulk/BulkQRGenerator').then((m) => ({ default: m.BulkQRGenerator })));
+const QRScanner = lazy(() => import('./components/scanner/QRScanner').then((m) => ({ default: m.QRScanner })));
+const TemplateLibrary = lazy(() => import('./components/templates/TemplateLibrary').then((m) => ({ default: m.TemplateLibrary })));
+const QRHistory = lazy(() => import('./components/history/QRHistory').then((m) => ({ default: m.QRHistory })));
+const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
+const QRClicksAnalytics = lazy(() => import('./components/analytics/QRClicksAnalytics').then((m) => ({ default: m.QRClicksAnalytics })));
+const ShortcutsModal = lazy(() => import('./components/common/ShortcutsModal').then((m) => ({ default: m.ShortcutsModal })));
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Command, ExternalLink, Loader2 } from 'lucide-react';
 
@@ -113,14 +113,23 @@ const MainContent: React.FC = () => {
 
   return (
     <main className="flex-1 w-full pb-28 lg:pb-12 pt-2 sm:pt-4 overflow-y-auto">
-      {activeTab === 'home' && <DashboardHome />}
-      {activeTab === 'generator' && <QRGenerator />}
-      {activeTab === 'analytics' && <QRClicksAnalytics />}
-      {activeTab === 'bulk' && <BulkQRGenerator />}
-      {activeTab === 'scanner' && <QRScanner />}
-      {activeTab === 'templates' && <TemplateLibrary />}
-      {activeTab === 'history' && <QRHistory />}
-      {activeTab === 'settings' && <SettingsView />}
+      <Suspense
+        fallback={
+          <div className="w-full min-h-[40vh] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Loading workspace…
+          </div>
+        }
+      >
+        {activeTab === 'home' && <DashboardHome />}
+        {activeTab === 'generator' && <QRGenerator />}
+        {activeTab === 'analytics' && <QRClicksAnalytics />}
+        {activeTab === 'bulk' && <BulkQRGenerator />}
+        {activeTab === 'scanner' && <QRScanner />}
+        {activeTab === 'templates' && <TemplateLibrary />}
+        {activeTab === 'history' && <QRHistory />}
+        {activeTab === 'settings' && <SettingsView />}
+      </Suspense>
     </main>
   );
 };
@@ -161,10 +170,12 @@ const AppShell: React.FC = () => {
       <MobileFloatingNav />
 
       {/* Keyboard Shortcuts Guide Modal */}
-      <ShortcutsModal
-        isOpen={showShortcutsModal}
-        onClose={() => setShowShortcutsModal(false)}
-      />
+      <Suspense fallback={null}>
+        <ShortcutsModal
+          isOpen={showShortcutsModal}
+          onClose={() => setShowShortcutsModal(false)}
+        />
+      </Suspense>
 
       {/* Live Proxy Redirect Handler if ?qr_proxy= present */}
       <ProxyRedirectHandler />
