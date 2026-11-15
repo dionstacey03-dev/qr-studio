@@ -109,13 +109,7 @@ export const QRClicksAnalytics: React.FC = () => {
       value: count,
     }));
 
-    return entries.length > 0
-      ? entries
-      : [
-          { name: 'iPhone (iOS)', value: 1 },
-          { name: 'Android', value: 1 },
-          { name: 'Mac (Safari)', value: 1 },
-        ];
+    return entries;
   }, [clickEvents]);
 
   // Browser Breakdown
