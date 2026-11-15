@@ -305,18 +305,64 @@ export const QRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         return { success: false, count: 0, error: 'Invalid JSON format. Expected history array or export object.' };
       }
 
+      if (jsonString.length > 5 * 1024 * 1024) {
+        return { success: false, count: 0, error: 'Import file exceeds the 5 MB limit.' };
+      }
+
+      const isRecord = (value: unknown): value is Record<string, any> =>
+        typeof value === 'object' && value !== null && !Array.isArray(value);
+      const isString = (value: unknown, maxLength = 5000) =>
+        typeof value === 'string' && value.length <= maxLength;
+      const validTypes: QRContentType[] = ['url', 'text', 'email', 'phone', 'sms', 'wifi', 'vcard'];
+      const isValidConfig = (value: unknown): value is QRConfig => {
+        if (!isRecord(value) || !validTypes.includes(value.type)) return false;
+        const c = value;
+        const emailOk = isRecord(c.email) && ['address', 'subject', 'body'].every((key) => isString(c.email[key]));
+        const phoneOk = isRecord(c.phone) && isString(c.phone.number, 100);
+        const smsOk = isRecord(c.sms) && isString(c.sms.number, 100) && isString(c.sms.message);
+        const wifiOk = isRecord(c.wifi) && isString(c.wifi.ssid, 256) &&
+          isString(c.wifi.password, 256) && ['WPA', 'WEP', 'nopass'].includes(c.wifi.encryption) &&
+          typeof c.wifi.hidden === 'boolean';
+        const vcardKeys = ['firstName', 'lastName', 'organization', 'title', 'phone', 'email', 'url', 'street', 'city', 'country'];
+        const vcardOk = isRecord(c.vcard) && vcardKeys.every((key) => isString(c.vcard[key], 500));
+        return isString(c.url) && isString(c.text) && emailOk && phoneOk && smsOk && wifiOk && vcardOk &&
+          /^#[0-9a-f]{6}$/i.test(c.fgColor) && /^#[0-9a-f]{6}$/i.test(c.bgColor) &&
+          Number.isInteger(c.size) && c.size >= 128 && c.size <= 2048 &&
+          ['L', 'M', 'Q', 'H'].includes(c.errorCorrection) &&
+          Number.isInteger(c.margin) && c.margin >= 0 && c.margin <= 16 &&
+          (c.logoShape === undefined || ['circle', 'square', 'rounded'].includes(c.logoShape)) &&
+          (c.logoUrl === null || c.logoUrl === undefined || isString(c.logoUrl, 4 * 1024 * 1024));
+      };
+
       const validItems: QRHistoryItem[] = itemsToImport
-        .filter((item: any) => item && typeof item === 'object' && item.type && item.config)
-        .map((item: any) => ({
-          id: item.id || 'qr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-          createdAt: typeof item.createdAt === 'number' ? item.createdAt : Date.now(),
-          type: item.type,
-          title: item.title || 'Imported QR',
-          summary: item.summary || item.rawContent || 'Imported configuration',
-          rawContent: item.rawContent || '',
-          config: item.config,
-          previewDataUrl: item.previewDataUrl,
-        }));
+        .slice(0, 100)
+        .filter((item: unknown) =>
+          isRecord(item) && validTypes.includes(item.type) && item.type === item.config?.type &&
+          isValidConfig(item.config) && isString(item.rawContent) &&
+          isString(item.title, 120) && isString(item.summary, 1000)
+        )
+        .map((item: any) => {
+          const safeLogo = typeof item.config.logoUrl === 'string' &&
+            /^data:image\/(png|jpeg|webp);base64,/i.test(item.config.logoUrl)
+            ? item.config.logoUrl
+            : null;
+          const safePreview = typeof item.previewDataUrl === 'string' &&
+            item.previewDataUrl.length <= 5 * 1024 * 1024 &&
+            /^data:image\/(png|jpeg|webp);base64,/i.test(item.previewDataUrl)
+            ? item.previewDataUrl
+            : undefined;
+          return {
+            id: isString(item.id, 100) ? item.id : 'qr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            createdAt: typeof item.createdAt === 'number' && Number.isFinite(item.createdAt) ? item.createdAt : Date.now(),
+            type: item.type,
+            title: item.title || 'Imported QR',
+            summary: item.summary || item.rawContent || 'Imported configuration',
+            rawContent: item.rawContent,
+            config: { ...item.config, logoUrl: safeLogo },
+            previewDataUrl: safePreview,
+            tags: Array.isArray(item.tags) ? item.tags.filter((tag: unknown) => isString(tag, 40)).slice(0, 20) : undefined,
+          };
+        });
 
       if (validItems.length === 0) {
         return { success: false, count: 0, error: 'No valid QR history entries found in the file.' };
