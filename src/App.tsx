@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { ThemeProvider } from './context/ThemeContext';
 import { QRProvider, useQR } from './context/QRContext';
 import { DesktopSidebar, MobileTopBar, MobileFloatingNav } from './components/layout/Navbar';
@@ -162,6 +163,7 @@ export default function App() {
     <ThemeProvider>
       <QRProvider>
         <AppShell />
+        <Analytics />
       </QRProvider>
     </ThemeProvider>
   );
